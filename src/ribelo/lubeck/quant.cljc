@@ -3,8 +3,8 @@
    [clojure.spec.alpha :as s]
    [net.cgrand.xforms :as x]
    [net.cgrand.xforms.rfs :as rf]
-   [uncomplicate.fluokitten.core :as fk]
-   [uncomplicate.fluokitten.jvm]
+   #?(:clj [uncomplicate.fluokitten.core :as fk])
+   #?(:clj [uncomplicate.fluokitten.jvm])
    ;; [criterium.core :refer [quick-bench]]
    [ribelo.haag :as h]
    [ribelo.visby.math :as math]
@@ -24,11 +24,11 @@
        ([] [])
        ([[x n]] (- (math/pow x (/ freq n)) 1.0))
        ([acc [x n]] [x n])))))
-  ([^double freq coll]
-   (let [arr (h/seq->double-array coll)
-         n   (alength arr)
-         ret (StatUtils/product (emath/add 1.0 arr))]
-     (- (math/pow ret (/ freq n)) 1.0))))
+  ([^double freq ret]
+   (let [arr    (h/seq->double-array ret)
+         n      (alength arr)
+         return (StatUtils/product (emath/add 1.0 arr))]
+     (- (math/pow return (/ freq n)) 1.0))))
 
 (comment
   (do (quick-bench (into [] (ann-return-geometric 254) data))
@@ -39,8 +39,8 @@
    (comp
     (stats/mean)
     (emath/mul freq)))
-  ([^double freq coll]
-   (let [arr (h/seq->double-array coll)
+  ([^double freq ret]
+   (let [arr (h/seq->double-array ret)
          mean (stats/mean arr)]
      (* mean freq))))
 
@@ -56,10 +56,10 @@
    (case mode
      :geometric (ann-return-geometric freq)
      :simple    (ann-return-simple freq)))
-  ([^double freq mode coll]
+  ([^double freq mode ret]
    (case mode
-     :geometric (ann-return-geometric freq coll)
-     :simple    (ann-return-simple freq coll))))
+     :geometric (ann-return-geometric freq ret)
+     :simple    (ann-return-simple freq ret))))
 
 (defn active-return ;; TODO
   "Asset/Portfolio annualized return minus Benchmark annualized return"
@@ -75,8 +75,8 @@
    (comp
     (stats/std)
     (emath/mul (math/sqrt freq))))
-  ([^double freq coll]
-   (let [arr (h/seq->double-array coll)]
+  ([^double freq ret]
+   (let [arr (h/seq->double-array ret)]
      (* (stats/std arr) (math/sqrt freq)))))
 
 (comment
@@ -94,8 +94,8 @@
        ([] [0.0 0.0])
        ([[mean std]] (/ (- mean frisk) std))
        ([acc coll] coll)))))
-  ([^double frisk ^double freq coll]
-   (let [arr (h/seq->double-array coll)
+  ([^double frisk ^double freq ret]
+   (let [arr (h/seq->double-array ret)
          mean (stats/mean arr)
          std (stats/std-s arr)]
      (/ (- mean frisk) std))))
@@ -104,7 +104,21 @@
   (do (quick-bench (into [] (sharpe-ratio 0.0 254.0) data))
       (quick-bench (sharpe-ratio 0.0 254.0 data))))
 
-(defn adjusted-sharpe-ratio ;; TODO
+(defn annualized-sharpe-ratio
+  ([^double frisk]
+   (comp
+    (x/transjuxt [(annualized-return) (annualized-risk)])
+    (x/reduce
+     (fn
+       ([] [0.0 0.0])
+       ([[mean std]] (/ (- mean frisk) std))
+       ([acc coll] coll)))))
+  (^double [frisk ^doubles ret]
+   (let [ann-ret (annualized-return ret)
+         std     (annualized-risk ret)]
+     (/ (- ann-ret frisk) std))))
+
+(defn adjusted-sharpe-ratio ;;TODO
   "Sharpe Ratio adjusted for skewness and kurtosis with a penalty factor
    for negative skewness and excess kurtosis."
   ([^double frisk]
@@ -160,8 +174,8 @@
      (comp
       (x/transjuxt [fnx x/count])
       (x/reduce fny))))
-  ([^double mar coll]
-   (let [arr (h/seq->double-array coll)
+  ([^double mar ret]
+   (let [arr (h/seq->double-array ret)
          n   (alength ^doubles arr)]
      (loop [i 0 sum 0.0]
        (if (< i n)
@@ -174,7 +188,6 @@
   (do (quick-bench (into [] (downside-risk 0.0) data))
       (quick-bench (downside-risk 0.0 data))))
 
-
 (defn sortino-ratio
   "Sortino ratio"
   ([^double frisk ^double mar]
@@ -185,8 +198,8 @@
        ([] (transient []))
        ([[mean dr]] (/ (- mean frisk) dr))
        ([acc [dr mean]] (-> acc (conj! mean) (conj! dr)))))))
-  ([^double frisk ^double mar coll]
-   (let [arr (h/seq->double-array coll)
+  ([^double frisk ^double mar ret]
+   (let [arr (h/seq->double-array ret)
          dr (downside-risk mar arr)
          mean (stats/mean arr)]
      (/ (- mean frisk) dr))))
@@ -210,8 +223,8 @@
            (let [val' (math/max x @val)]
              (vreset! val val')
              (xf acc (/ (- val' x) val')))))))))
-  ([coll]
-   (let [arr (h/seq->double-array coll)
+  ([close-or-ret]
+   (let [arr (h/seq->double-array close-or-ret)
          n   (alength ^doubles arr)
          r   (double-array n)]
      (loop [i 0 s 1.0 mx 1.0]
@@ -237,8 +250,8 @@
         ([] (rf))
         ([acc] (rf acc))
         ([acc x] (rf acc (- 1 (transduce (map #(+ 1 %)) * x))))))))
-  ([coll]
-   (let [arr (h/seq->double-array coll)
+  ([close-or-ret]
+   (let [arr (h/seq->double-array close-or-ret)
          n   (alength ^doubles arr)
          dq   (java.util.ArrayDeque.)]
      (loop [i 0 s 1.0]
@@ -266,8 +279,8 @@
   ([]
    (comp (continuous-drawdown)
          (stats/mean)))
-  ([coll]
-   (let [arr (h/seq->double-array coll)]
+  ([close-or-ret]
+   (let [arr (h/seq->double-array close-or-ret)]
      (->> (continuous-drawdown arr)
           (stats/mean)))))
 
@@ -278,8 +291,8 @@
 (defn maximum-drawdown
   ([] (comp (continuous-drawdown)
             (stats/max)))
-  ([coll]
-   (let [arr (h/seq->double-array coll)]
+  ([close-or-ret]
+   (let [arr (h/seq->double-array close-or-ret)]
      (->> (continuous-drawdown arr)
           (stats/max)))))
 
@@ -466,8 +479,8 @@
     (x/transjuxt [(x/take-last 1)
                   (stats/max)])
     (map (fn [[last max]] (double (- 1.0 (/ last max)))))))
-  ([^long freq coll]
-   (let [arr (-> (h/seq->double-array coll) (h/take-last freq))
+  ([^long freq close]
+   (let [arr (-> (h/seq->double-array close) (h/take-last freq))
          max (stats/max ^doubles arr)]
      (- 1.0 (/ ^double (h/last arr) max)))))
 
@@ -484,8 +497,8 @@
              ([] (rf))
              ([acc] (rf acc))
              ([acc [x y]] (rf acc (- (/ y x) 1.0)))))))
-  ([coll]
-   (let [arr (h/seq->double-array coll)
+  ([close]
+   (let [arr (h/seq->double-array close)
          n   (alength ^doubles arr)
          nn  (dec n)
          r   (double-array (dec n))]
@@ -501,34 +514,3 @@
 (comment
   (do (quick-bench (into [] (tick->ret) data))
       (quick-bench (tick->ret data))))
-
-(defn redp-allocation
-  ([frisk risk freq]
-   (comp
-    (x/transjuxt [(rolling-economic-drawndown freq)
-                  (stats/std)
-                  (comp (tick->ret) (sharpe-ratio frisk))])
-    (x/reduce
-     (fn
-       ([] [0.0 0.0 0.0])
-       ([[redp std sharpe-ratio]]
-        (math/min 1.0
-                  (math/max 0.0 (* (/ (+ (/ sharpe-ratio std) 0.5)
-                                      (- 1.0 (math/pow risk 2.0)))
-                                   (math/max 0.0 (/ (- risk redp)
-                                                    (- 1.0 redp)))))))
-       ([acc coll] coll)))))
-  ([frisk risk freq coll]
-   (let [arr (h/seq->double-array coll)
-         redp (rolling-economic-drawndown freq arr)
-         std  (stats/std-s arr)
-         sr   (sharpe-ratio frisk freq arr)]
-     (math/min 1.0
-               (math/max 0.0 (* (/ (+ (/ sr std) 0.5)
-                                   (- 1.0 (math/pow risk 2.0)))
-                                (math/max 0.0 (/ (- risk redp)
-                                                 (- 1.0 redp)))))))))
-
-(comment
-  (do (quick-bench (into [] (redp-allocation 0.0 0.3 254) data))
-      (quick-bench (redp-allocation 0.0 0.3 254 data))))
