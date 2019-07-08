@@ -5,7 +5,7 @@
    [net.cgrand.xforms.rfs :as rf]
    [uncomplicate.fluokitten.core :as fk]
    [uncomplicate.fluokitten.jvm]
-   [criterium.core :refer [quick-bench]]
+   ;; [criterium.core :refer [quick-bench]]
    [ribelo.haag :as h]
    [ribelo.lubeck.math :as math]
    [ribelo.lubeck.emath :as emath]
