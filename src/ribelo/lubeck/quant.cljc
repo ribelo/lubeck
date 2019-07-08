@@ -7,9 +7,9 @@
    [uncomplicate.fluokitten.jvm]
    ;; [criterium.core :refer [quick-bench]]
    [ribelo.haag :as h]
-   [ribelo.lubeck.math :as math]
-   [ribelo.lubeck.emath :as emath]
-   [ribelo.lubeck.stats :as stats])
+   [ribelo.visby.math :as math]
+   [ribelo.visby.emath :as emath]
+   [ribelo.visby.stats :as stats])
   (:import (org.apache.commons.math3.stat StatUtils)))
 
 (comment
@@ -22,7 +22,7 @@
     (x/reduce
      (fn
        ([] [])
-       ([acc] (- (math/pow x (/ freq n)) 1.0))
+       ([[x n]] (- (math/pow x (/ freq n)) 1.0))
        ([acc [x n]] [x n])))))
   ([^double freq coll]
    (let [arr (h/seq->double-array coll)
