@@ -21,7 +21,7 @@
                                    (math/max 0.0 (/ (- risk redp)
                                                     (- 1.0 redp)))))))
        ([acc coll] coll)))))
-  ([frisk risk freq ret]
+  (^doubles [^double frisk ^double risk ^double freq ret]
    (let [arr (h/seq->double-array ret)
          redp (quant/rolling-economic-drawndown freq arr)
          std  (quant/annualized-risk freq)
