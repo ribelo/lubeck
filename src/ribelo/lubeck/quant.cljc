@@ -17,14 +17,14 @@
       (def arr  (double-array data))))
 
 (defn ann-return-geometric
-  ([^double freq]
+  ([^long freq]
    (comp
     (x/reduce
      (fn
        ([] [])
        ([[x n]] (- (math/pow x (/ freq n)) 1.0))
        ([acc [x n]] [x n])))))
-  (^double [^double freq ret]
+  (^double [^long freq ret]
    (let [arr    (h/seq->double-array ret)
          n      (alength arr)
          return (StatUtils/product (emath/add 1.0 arr))]
@@ -35,11 +35,11 @@
       (quick-bench (ann-return-geometric 254.0 data))))
 
 (defn ann-return-simple
-  ([^double freq]
+  ([^long freq]
    (comp
     (stats/mean)
     (emath/mul freq)))
-  (^double [^double freq ret]
+  (^double [^long freq ret]
    (let [arr (h/seq->double-array ret)
          mean (stats/mean arr)]
      (* mean freq))))
@@ -52,11 +52,11 @@
   "Average annualized returns over a period, convenient when comparing returns.
   It can be an Arithmetic or Geometric (default) average return: if compounded with itself the
   geometric average will be equal to the cumulative return"
-  ([^double freq mode]
+  ([^long freq mode]
    (case mode
      :geometric (ann-return-geometric freq)
      :simple    (ann-return-simple freq)))
-  (^double [^double freq mode ret]
+  (^double [^long freq mode ret]
    (case mode
      :geometric (ann-return-geometric freq ret)
      :simple    (ann-return-simple freq ret))))
@@ -71,11 +71,11 @@
 
 (defn annualized-risk
   "Annualized standard deviation of asset/portfolio returns"
-  ([^double freq]
+  ([^long freq]
    (comp
     (stats/std)
     (emath/mul (math/sqrt freq))))
-  (^double [^double freq ret]
+  (^double [^long freq ret]
    (let [arr (h/seq->double-array ret)]
      (* (stats/std arr) (math/sqrt freq)))))
 
@@ -94,7 +94,7 @@
        ([] [0.0 0.0])
        ([[mean std]] (/ (- mean frisk) std))
        ([acc coll] coll)))))
-  (^double [^double frisk ^double freq ret]
+  (^double [^double frisk ^long freq ret]
    (let [arr (h/seq->double-array ret)
          mean (stats/mean arr)
          std (stats/std-s arr)]
@@ -105,17 +105,17 @@
       (quick-bench (sharpe-ratio 0.0 254.0 data))))
 
 (defn annualized-sharpe-ratio
-  ([^double frisk]
+  ([^double frisk ^long freq]
    (comp
-    (x/transjuxt [(annualized-return) (annualized-risk)])
+    (x/transjuxt [(ann-return-simple freq) (annualized-risk freq)])
     (x/reduce
      (fn
        ([] [0.0 0.0])
        ([[mean std]] (/ (- mean frisk) std))
        ([acc coll] coll)))))
-  (^double [frisk ^doubles ret]
-   (let [ann-ret (annualized-return ret)
-         std     (annualized-risk ret)]
+  (^double [^double frisk ^long freq ^doubles ret]
+   (let [ann-ret (ann-return-geometric freq ret)
+         std     (annualized-risk freq ret)]
      (/ (- ann-ret frisk) std))))
 
 (defn adjusted-sharpe-ratio ;;TODO
@@ -484,6 +484,7 @@
          max (stats/max ^doubles arr)]
      (- 1.0 (/ ^double (h/last arr) max)))))
 
+(h/take-last (double-array (range 10)) 3)
 (comment
   (do (quick-bench (into [] (rolling-economic-drawndown 254) data))
       (quick-bench (rolling-economic-drawndown 254 data))))

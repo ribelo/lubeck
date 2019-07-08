@@ -5,6 +5,10 @@
    [ribelo.haag :as h]
    [net.cgrand.xforms :as x]))
 
+(comment
+  (do (def data (vec (repeatedly 100000 #(/ (- 0.5 (rand)) 10.0))))
+      (def arr  (double-array data))))
+
 (defn single-allocation
   ([frisk risk freq]
    (comp
@@ -21,11 +25,12 @@
                                    (math/max 0.0 (/ (- risk redp)
                                                     (- 1.0 redp)))))))
        ([acc coll] coll)))))
-  (^doubles [^double frisk ^double risk ^double freq ret]
-   (let [arr (h/seq->double-array ret)
-         redp (quant/rolling-economic-drawndown freq arr)
-         std  (quant/annualized-risk freq)
-         sr   (quant/annualized-sharpe-ratio frisk freq arr)]
+  (^double [^double frisk ^double risk ^long freq close]
+   (let [close'  (h/seq->double-array close)
+         ret  (quant/tick->ret close')
+         redp (quant/rolling-economic-drawndown freq close')
+         std  (quant/annualized-risk freq ret)
+         sr   (quant/annualized-sharpe-ratio frisk freq ret)]
      (math/min 1.0
                (math/max 0.0 (* (/ (+ (/ sr std) 0.5)
                                    (- 1.0 (math/pow risk 2.0)))
@@ -33,5 +38,5 @@
                                                  (- 1.0 redp)))))))))
 
 (comment
-  (do (quick-bench (into [] (redp-allocation 0.0 0.3 254) data))
-      (quick-bench (redp-allocation 0.0 0.3 254 data))))
+  (do (quick-bench (into [] (single-allocation 0.0 0.3 254) data))
+      (quick-bench (single-allocation 0.0 0.3 100000 data))))
