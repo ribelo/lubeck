@@ -24,7 +24,7 @@
        ([] [])
        ([[x n]] (- (math/pow x (/ freq n)) 1.0))
        ([acc [x n]] [x n])))))
-  ([^double freq ret]
+  (^double [^double freq ret]
    (let [arr    (h/seq->double-array ret)
          n      (alength arr)
          return (StatUtils/product (emath/add 1.0 arr))]
@@ -39,7 +39,7 @@
    (comp
     (stats/mean)
     (emath/mul freq)))
-  ([^double freq ret]
+  (^double [^double freq ret]
    (let [arr (h/seq->double-array ret)
          mean (stats/mean arr)]
      (* mean freq))))
@@ -56,7 +56,7 @@
    (case mode
      :geometric (ann-return-geometric freq)
      :simple    (ann-return-simple freq)))
-  ([^double freq mode ret]
+  (^double [^double freq mode ret]
    (case mode
      :geometric (ann-return-geometric freq ret)
      :simple    (ann-return-simple freq ret))))
@@ -75,7 +75,7 @@
    (comp
     (stats/std)
     (emath/mul (math/sqrt freq))))
-  ([^double freq ret]
+  (^double [^double freq ret]
    (let [arr (h/seq->double-array ret)]
      (* (stats/std arr) (math/sqrt freq)))))
 
@@ -94,7 +94,7 @@
        ([] [0.0 0.0])
        ([[mean std]] (/ (- mean frisk) std))
        ([acc coll] coll)))))
-  ([^double frisk ^double freq ret]
+  (^double [^double frisk ^double freq ret]
    (let [arr (h/seq->double-array ret)
          mean (stats/mean arr)
          std (stats/std-s arr)]
@@ -174,7 +174,7 @@
      (comp
       (x/transjuxt [fnx x/count])
       (x/reduce fny))))
-  ([^double mar ret]
+  (^double [^double mar ret]
    (let [arr (h/seq->double-array ret)
          n   (alength ^doubles arr)]
      (loop [i 0 sum 0.0]
@@ -198,7 +198,7 @@
        ([] (transient []))
        ([[mean dr]] (/ (- mean frisk) dr))
        ([acc [dr mean]] (-> acc (conj! mean) (conj! dr)))))))
-  ([^double frisk ^double mar ret]
+  (^double [^double frisk ^double mar ret]
    (let [arr (h/seq->double-array ret)
          dr (downside-risk mar arr)
          mean (stats/mean arr)]
@@ -223,7 +223,7 @@
            (let [val' (math/max x @val)]
              (vreset! val val')
              (xf acc (/ (- val' x) val')))))))))
-  ([close-or-ret]
+  (^doubles [close-or-ret]
    (let [arr (h/seq->double-array close-or-ret)
          n   (alength ^doubles arr)
          r   (double-array n)]
@@ -250,7 +250,7 @@
         ([] (rf))
         ([acc] (rf acc))
         ([acc x] (rf acc (- 1 (transduce (map #(+ 1 %)) * x))))))))
-  ([close-or-ret]
+  (^doubles [close-or-ret]
    (let [arr (h/seq->double-array close-or-ret)
          n   (alength ^doubles arr)
          dq   (java.util.ArrayDeque.)]
@@ -279,7 +279,7 @@
   ([]
    (comp (continuous-drawdown)
          (stats/mean)))
-  ([close-or-ret]
+  (^double [close-or-ret]
    (let [arr (h/seq->double-array close-or-ret)]
      (->> (continuous-drawdown arr)
           (stats/mean)))))
@@ -291,7 +291,7 @@
 (defn maximum-drawdown
   ([] (comp (continuous-drawdown)
             (stats/max)))
-  ([close-or-ret]
+  (^double [close-or-ret]
    (let [arr (h/seq->double-array close-or-ret)]
      (->> (continuous-drawdown arr)
           (stats/max)))))
@@ -479,7 +479,7 @@
     (x/transjuxt [(x/take-last 1)
                   (stats/max)])
     (map (fn [[last max]] (double (- 1.0 (/ last max)))))))
-  ([^long freq close]
+  (^double [^long freq close]
    (let [arr (-> (h/seq->double-array close) (h/take-last freq))
          max (stats/max ^doubles arr)]
      (- 1.0 (/ ^double (h/last arr) max)))))
@@ -497,7 +497,7 @@
              ([] (rf))
              ([acc] (rf acc))
              ([acc [x y]] (rf acc (- (/ y x) 1.0)))))))
-  ([close]
+  (^doubles [close]
    (let [arr (h/seq->double-array close)
          n   (alength ^doubles arr)
          nn  (dec n)
