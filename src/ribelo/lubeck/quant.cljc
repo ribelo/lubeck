@@ -214,18 +214,14 @@
   (do (quick-bench (into [] (continuous-drawdown) data))
       (quick-bench (continuous-drawdown data))))
 
-;; (def rate-of-return ;;TODO
-;;   "Simple rate of return calculated from the last and the first value of
-;;   an array of numbers."
-;;   (comp (emath/add 1.0)
-;;         (x/reductions *)
-;;         (x/transjuxt [(x/reduce rf/some)
-;;                       x/last])
-;;         (x/reduce
-;;          (fn
-;;            ([] (transient []))
-;;            ([[f l]] (- (/ l f) 1.0))
-;;            ([acc [f l]] (-> acc (conj! f) (conj! l)))))))
+(defn rate-of-return
+  "Simple rate of return calculated from the last and the first value of
+  an array of numbers."
+  ^double [close]
+  (let [arr (h/seq->double-array close)
+        l   (h/last arr)
+        f   (h/first arr)]
+    (p/- (p/div l f) 1.0)))
 
 ;; (defn cagr ;;TODO
 ;;   "Compound annual growth rate"
