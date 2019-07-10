@@ -174,7 +174,7 @@
         n   (alength ^doubles arr)
         dq   (java.util.ArrayDeque.)]
     (loop [i 0 s 1.0]
-      (if (p/< i n)
+      (when (p/< i n)
         (let [v (aget ^doubles arr i)]
           (cond
             (and (p/zero? i) (p/< v 0.0))
@@ -185,10 +185,10 @@
               (let [dd (p/- 1.0 s)]
                 (when-not (p/zero? dd)
                   (.add dq dd))
-                (recur (p/inc i) 1.0)))))
-        (let [r (double-array (.toArray dq))]
-          (.clear dq)
-          r)))))
+                (recur (p/inc i) 1.0)))))))
+    (let [r (double-array (.toArray dq))]
+      (.clear dq)
+      r)))
 
 (comment
   (do (quick-bench (into [] (continuous-drawdown) data))
