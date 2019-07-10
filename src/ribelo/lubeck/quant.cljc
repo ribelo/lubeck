@@ -223,14 +223,16 @@
         f   (h/first arr)]
     (p/- (p/div l f) 1.0)))
 
-;; (defn cagr ;;TODO
-;;   "Compound annual growth rate"
-;;   ([n]
-;;    (comp rate-of-return
-;;          (emath/add 1.0)
-;;          (emath/pow (/ 1.0 n))
-;;          (emath/sub 1.0)))
-;;   ([] rate-of-return))
+(defn cagr
+  "Compound annual growth rate"
+  (^double [^long n close]
+   (let [arr (h/seq->double-array close)]
+     (p/- (math/pow
+           (p/+ 1.0
+                (rate-of-return arr))
+           (p/div 1.0 n)))))
+  (^double [close]
+   (cagr 1 close)))
 
 ;; (defn calmar-ratio ;;TODO
 ;;   "A risk-adjusted measure like Sharpe ratio that uses maximum drawdown instead of
