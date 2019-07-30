@@ -4,8 +4,6 @@
            uncomplicate/fluokitten          {:mvn/version "0.9.1"}
            org.apache.commons/commons-math3 {:mvn/version "3.6.1"}
            ribelo.haag                      {:git/url "https://github.com/ribelo/haag"
-                                             :sha     "bb12cc27ae25a9b803f37872e68c31e104a046a9"}
+                                             :sha     "5c243b086dab9dc47bdd5123fc6f956318338967"}
            ribelo.visby                     {:git/url "https://github.com/ribelo/visby"
-                                             :sha     "9d0eeab83277a75f0483a121e5dc28596f467c06"}}
- :aliases {:dev {:extra-deps {org.clojure/clojure {:mvn/version "1.10.1"}
-                              criterium           {:mvn/version "0.4.5"}}}}}
+                                             :sha     "ddcbc5e6d86fd08309b83eda7f784f89e350ba94"}}}

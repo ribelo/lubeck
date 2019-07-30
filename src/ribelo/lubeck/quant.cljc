@@ -20,17 +20,17 @@
       (def arr  (double-array data))))
 
 (defn ann-return-geometric
-  ^double [^long freq ret]
+  ^double [freq ret]
   (let [arr    (h/seq->double-array ret)
         n      (alength ^doubles  arr)
-        return (StatUtils/product (emath/add 1.0 arr))]
-    (p/- (math/pow return (p/div freq n)) 1.0)))
+        return (fk/fold * (emath/add 1.0 arr))]
+    (p/- (math/pow return (p/div (p/double freq) (p/double n))) 1.0)))
 
 (defn ann-return-simple
   ^double [^long freq ret]
   (let [arr (h/seq->double-array ret)
         mean (stats/mean arr)]
-    (p/* mean (p/long->double freq))))
+    (p/* mean (p/double freq))))
 
 (comment
   (do (quick-bench (into [] (ann-return-simple 254.0) data))
@@ -130,7 +130,7 @@
       (if (p/< i n)
         (recur (p/inc i) (p/+ sum
                           (p/div (math/sq (math/min 0.0 (p/- (aget ^doubles arr i) mar)))
-                                 (p/long->double n))))
+                                 (p/double n))))
         (math/sqrt sum)))))
 
 (comment
@@ -179,6 +179,8 @@
           (cond
             (and (p/zero? i) (p/< v 0.0))
             (recur (p/inc i) (p/+ 1.0 v) )
+            (and (p/zero? i) (p/> v 0.0))
+            (recur (p/inc i) 1.0 )
             (p/< 0 i)
             (if (p/< v 0.0)
               (recur (p/inc i) (p/* s (+ 1.0 v)))
@@ -217,22 +219,25 @@
 (defn rate-of-return
   "Simple rate of return calculated from the last and the first value of
   an array of numbers."
-  ^double [close]
-  (let [arr (h/seq->double-array close)
+  ^double [ret]
+  (let [arr (->> (h/seq->double-array ret)
+                 (emath/add 1.0)
+                 (emath/cumprod))
         l   (h/last arr)
         f   (h/first arr)]
-    (p/- (p/div l f) 1.0)))
+    (p/- (p/div (p/double l) (p/double f)) 1.0)))
 
 (defn cagr
   "Compound annual growth rate"
-  (^double [^long n close]
-   (let [arr (h/seq->double-array close)]
+  (^double [^double n ret]
+   (let [arr (h/seq->double-array ret)]
      (p/- (math/pow
            (p/+ 1.0
                 (rate-of-return arr))
-           (p/div 1.0 n)))))
+           (p/div 1.0 n))
+          1.0)))
   (^double [close]
-   (cagr 1 close)))
+   (cagr 1.0 close)))
 
 ;; (defn calmar-ratio ;;TODO
 ;;   "A risk-adjusted measure like Sharpe ratio that uses maximum drawdown instead of
@@ -248,6 +253,15 @@
 ;;    (calmar-ratio frisk 252))
 ;;   ([]
 ;;    (calmar-ratio 0.0 252)))
+
+(defn calmar-ratio
+  "A risk-adjusted measure like Sharpe ratio that uses maximum drawdown instead of
+  standard deviation for risk."
+  ([^double frisk ^long freq ret]
+   (let [arr    (h/seq->double-array ret)
+         maxdd  (maximum-drawdown ret)
+         annret (ann-return-geometric freq arr)]
+     (/ (- annret frisk) maxdd))))
 
 ;; (defn downside-potential ;;TODO
 ;;   "Downside potential"
