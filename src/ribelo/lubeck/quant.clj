@@ -3,9 +3,8 @@
    [clojure.spec.alpha :as s]
    [net.cgrand.xforms :as x]
    [net.cgrand.xforms.rfs :as rf]
-   #?(:clj [uncomplicate.fluokitten.core :as fk])
-   #?(:clj [uncomplicate.fluokitten.jvm])
-   ;; [criterium.core :refer [quick-bench]]
+   [uncomplicate.fluokitten.core :as fk]
+   [uncomplicate.fluokitten.jvm]
    [ribelo.haag :as h]
    [ribelo.visby.math :as math]
    [ribelo.visby.emath :as emath]
@@ -16,9 +15,9 @@
 (set! *warn-on-reflection* true)
 
 (comment
-  (do (def data (vec (repeatedly 100000 #(/ (- 0.5 (rand)) 10.0))))
+  (do (require '[criterium.core :refer [quick-bench]])
+      (def data (vec (repeatedly 100000 #(/ (- 0.5 (rand)) 10.0))))
       (def arr  (double-array data))))
-
 
 (defn ann-return-geometric
   ([freq]
@@ -237,9 +236,9 @@
          (let [v (aget ^doubles arr i)]
            (cond
              (and (p/zero? i) (p/< v 0.0))
-             (recur (p/inc i) (p/+ 1.0 v) )
+             (recur (p/inc i) (p/+ 1.0 v))
              (and (p/zero? i) (p/> v 0.0))
-             (recur (p/inc i) 1.0 )
+             (recur (p/inc i) 1.0)
              (p/< 0 i)
              (if (p/< v 0.0)
                (recur (p/inc i) (p/* s (+ 1.0 v)))
@@ -498,7 +497,6 @@
   (let [arr (-> (h/seq->double-array close) (h/take-last freq))
         max (stats/max ^doubles arr)]
     (p/- 1.0 (p/div ^double (h/last arr) max))))
-
 
 (comment
   (do (quick-bench (into [] (rolling-economic-drawndown 254) data))
