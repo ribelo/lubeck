@@ -307,17 +307,20 @@
 (defn rate-of-change
   "Simple rate of chane calculated from the last and the first value of
   an array of numbers."
-  ([]
+  ([^long n]
    (x/reduce
     (fn
       ([] [])
-      ([acc] (rate-of-change acc))
+      ([acc] (rate-of-change n acc))
       ([acc x] (conj acc x)))))
-  (^double [ret]
+  (^double [^long n ret]
    (let [arr (h/seq->double-array ret)
-         l   (h/last arr)
-         f   (h/first arr)]
-     (p/div (p/double f) (p/double l)))))
+         c   (alength ^doubles arr)]
+     (if (< n c)
+       (let [l (h/last arr)
+             i (aget ^doubles arr (p/dec (p/- c n)))]
+         (p/- (p/div (p/double l) (p/double i)) 1.0))
+       0.0))))
 
 (defn cagr
   "Compound annual growth rate"
