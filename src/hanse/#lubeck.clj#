@@ -1,16 +1,14 @@
-(ns ribelo.lubeck.quant
+(ns hanse.lubeck
   (:require
    [clojure.spec.alpha :as s]
    [net.cgrand.xforms :as x]
    [net.cgrand.xforms.rfs :as rf]
    [uncomplicate.fluokitten.core :as fk]
    [uncomplicate.fluokitten.jvm]
-   [ribelo.haag :as h]
-   [ribelo.visby.math :as math]
-   [ribelo.visby.emath :as emath]
-   [ribelo.visby.stats :as stats]
-   [primitive-math :as p])
-  (:import (org.apache.commons.math3.stat StatUtils)))
+   [hanse.halle :as h]
+   [hanse.rostock.math :as math]
+   [hanse.rostock.emath :as emath]
+   [hanse.rostock.stats :as stats]))
 
 (set! *warn-on-reflection* true)
 
@@ -521,3 +519,4 @@
 (comment
   (do (quick-bench (into [] (tick->ret) data))
       (quick-bench (tick->ret data))))
+

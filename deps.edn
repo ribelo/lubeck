@@ -1,9 +1,9 @@
-{:paths   ["src"]
- :deps    {net.cgrand/xforms                {:mvn/version "0.19.0"}
-           primitive-math                   {:mvn/version "0.1.6"}
-           uncomplicate/fluokitten          {:mvn/version "0.9.1"}
-           org.apache.commons/commons-math3 {:mvn/version "3.6.1"}
-           ribelo.haag                      {:git/url "https://github.com/ribelo/haag"
-                                             :sha     "5c243b086dab9dc47bdd5123fc6f956318338967"}
-           ribelo.visby                     {:git/url "https://github.com/ribelo/visby"
-                                             :sha     "ddcbc5e6d86fd08309b83eda7f784f89e350ba94"}}}
+{:paths ["src"]
+ :deps  {uncomplicate/fluokitten                 {:mvn/version "0.9.1"}
+         com.github.haifengl/smile-interpolation {:mvn/version "2.1.0"}
+         com.github.haifengl/smile-core          {:mvn/version "2.1.0"}
+         com.github.haifengl/smile-netlib        {:mvn/version "2.1.0"}
+         ribelo/hanse.halle                      {:git/url "https://github.com/ribelo/halle"
+                                                  :sha     "af149f909c23e17cbebb175d76b1ed3531efb1f1"}
+         ribelo/hanse.rostock                    {:git/url "https://github.com/ribelo/rostock"
+                                                  :sha     "fde8c0a0195ed370370e7cda1a5a3fcb1efd3eaa"}}}
