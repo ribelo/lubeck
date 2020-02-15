@@ -1,4 +1,4 @@
-(ns ribelo.lubeck.redp
+(ns hanse.lubeck.redp
   (:require
    [uncomplicate.fluokitten.core :as fk]
    [hanse.halle :as h]
