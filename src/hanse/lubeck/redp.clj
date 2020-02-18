@@ -60,5 +60,6 @@
          :allocation p})
       symbols proportions)))
   ([frisk risk freq assets]
-   (let [symbols        (into [] (map #(:symbol (first %))) assets)]
-     (multiple-allocation frisk risk freq symbols assets))))
+   (let [symbols (into [] (map #(:symbol (first %))) assets)
+         data    (into [] (map #(into [] (map :close) %)) assets)]
+     (multiple-allocation frisk risk freq symbols data))))
