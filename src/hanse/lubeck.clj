@@ -1,46 +1,31 @@
 (ns hanse.lubeck
   (:require
    [clojure.spec.alpha :as s]
-   [net.cgrand.xforms :as x]
-   [net.cgrand.xforms.rfs :as rf]
-   [uncomplicate.fluokitten.core :as fk]
    [uncomplicate.fluokitten.jvm]
+   [uncomplicate.fluokitten.core :as fk]
    [hanse.halle :as h]
    [hanse.rostock.math :as math]
    [hanse.rostock.emath :as emath]
    [hanse.rostock.stats :as stats]))
 
-(set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
 
 (comment
   (do (require '[criterium.core :refer [quick-bench]])
-      (def data (vec (repeatedly 100000 #(/ (- 0.5 (rand)) 10.0))))
+      (require '[taoensso.encore :as e])
+      (def data (vec (repeatedly 100000 #(/ (- 0.5 ^double (rand)) 10.0))))
       (def arr  (double-array data))))
 
-(defn ann-return-geometric
-  ([freq]
-   (x/reduce
-    (fn
-      ([] [])
-      ([acc] (ann-return-geometric freq acc))
-      ([acc x] (conj acc x)))))
-  (^double [freq ret]
-   (let [arr    (h/seq->double-array ret)
-         n      (alength ^doubles  arr)
-         return (fk/fold * (emath/add 1.0 arr))]
-     (p/- (math/pow return (p/div (p/double freq) (p/double n))) 1.0))))
+(defn ann-return-geometric ^double [^double freq ret]
+  (let [arr    (h/seq->double-array ret)
+        n      (alength ^doubles  arr)
+        return (fk/fold * (emath/add 1.0 arr))]
+    (- (math/pow return (/ freq n)) 1.0)))
 
-(defn ann-return-simple
-  ([^long freq]
-   (x/reduce
-    (fn
-      ([] [])
-      ([acc] (ann-return-simple freq acc))
-      ([acc x] (conj acc x)))))
-  (^double [^long freq ret]
-   (let [arr (h/seq->double-array ret)
-         mean (stats/mean arr)]
-     (p/* mean (p/double freq)))))
+(defn ann-return-simple ^double [^double freq ret]
+  (let [arr (h/seq->double-array ret)
+        mean (stats/mean arr)]
+    (* mean freq)))
 
 (comment
   (do (quick-bench (into [] (ann-return-simple 254.0) data))
@@ -50,14 +35,10 @@
   "Average annualized returns over a period, convenient when comparing returns.
   It can be an Arithmetic or Geometric (default) average return: if compounded with itself the
   geometric average will be equal to the cumulative return"
-  ([^long freq mode]
-   (case mode
-     :geometric (ann-return-geometric freq)
-     :simple    (ann-return-simple freq)))
-  (^double [^long freq mode ret]
-   (case mode
-     :geometric (ann-return-geometric freq ret)
-     :simple    (ann-return-simple freq ret))))
+  ^double [^long freq mode ret]
+  (case mode
+    :geometric (ann-return-geometric freq ret)
+    :simple    (ann-return-simple freq ret)))
 
 ;; (defn active-return ;; TODO
 ;;   "Asset/Portfolio annualized return minus Benchmark annualized return"
@@ -69,50 +50,30 @@
 
 (defn annualized-risk
   "Annualized standard deviation of asset/portfolio returns"
-  ([^long freq]
-   (x/reduce
-    (fn
-      ([] [])
-      ([acc] (annualized-risk freq acc))
-      ([acc x] (conj acc x)))))
-  (^double [^long freq ret]
-   (let [arr (h/seq->double-array ret)]
-     (p/* (stats/std-s ^doubles arr) (math/sqrt freq)))))
+  ^double [^double freq ret]
+  (let [arr (h/seq->double-array ret)]
+    (* (stats/std ^doubles arr) (math/sqrt freq))))
 
 (comment
-  (do (quick-bench (into [] (annualized-risk 254.0) data))
-      (quick-bench (annualized-risk 254.0 data))))
+  (quick-bench (annualized-risk 254.0 data)))
 
 (defn sharpe-ratio
   "Sharpe Ratio.Compute Sharpe ratio for an collection XS of values (daily, weekly, etc) and
    a free-risk rate. Annual free-risk must be divided to match the right timeframe."
-  ([^double frisk ^long freq]
-   (x/reduce
-    (fn
-      ([] [])
-      ([acc] (sharpe-ratio frisk freq acc))
-      ([acc x] (conj acc x)))))
-  (^double [^double frisk ^long freq ret]
-   (let [arr (h/seq->double-array ret)
-         mean (stats/mean arr)
-         std (stats/std-s arr)]
-     (p/div (p/- mean frisk) std))))
+  ^double [^double frisk ^long freq ret]
+  (let [arr   (-> (h/seq->double-array ret) (h/take-last freq))
+        mean (stats/mean arr)
+        std  (stats/std arr)]
+    (/ (- mean frisk) std)))
 
 (comment
-  (do (quick-bench (into [] (sharpe-ratio 0.0 254.0) data))
-      (quick-bench (sharpe-ratio 0.0 254.0 data))))
+  (quick-bench (sharpe-ratio 0.0 254.0 data)))
 
 (defn annualized-sharpe-ratio
-  ([^double frisk ^long freq]
-   (x/reduce
-    (fn
-      ([] [])
-      ([acc] (annualized-sharpe-ratio frisk freq acc))
-      ([acc x] (conj acc x)))))
-  (^double [^double frisk ^long freq ret]
-   (let [ann-ret (ann-return-geometric freq ret)
-         std     (annualized-risk freq ret)]
-     (/ (- ann-ret frisk) std))))
+  ^double [^double frisk ^long freq ret]
+  (let [ann-ret (ann-return-geometric freq ret)
+        std     (annualized-risk freq ret)]
+    (/ (- ann-ret frisk) std)))
 
 ;; (defn adjusted-sharpe-ratio ;;TODO
 ;;   "Sharpe Ratio adjusted for skewness and kurtosis with a penalty factor
@@ -123,8 +84,8 @@
 ;;     (x/reduce
 ;;      (fn
 ;;        ([] (transient []))
-;;        ([[sr sk ku]] (p/* sr (- (+ 1 (p/* (/ sk 6) sr))
-;;                               (p/* (/ (- ku 3) 24) (math/sqrt sr)))))
+;;        ([[sr sk ku]] (* sr (- (+ 1 (* (/ sk 6) sr))
+;;                               (* (/ (- ku 3) 24) (math/sqrt sr)))))
 ;;        ([acc [sr sk ku]] (-> acc (conj! sr) (conj! sk) (conj! ku)))))))
 ;;   ([] (adjusted-sharpe-ratio 0.0)))
 
@@ -139,10 +100,10 @@
 ;;      (fn
 ;;        ([] (transient []))
 ;;        ([[sk ku annret annrisk]]
-;;         (let [sr (/ (- (/ (Math/round ^double (p/* 10000 annret)) 10000) frisk)
-;;                     (/ (Math/round ^double (p/* 10000 annrisk)) 10000))]
-;;           (p/* sr (- (+ 1 (p/* (/ sk 6) sr))
-;;                    (p/* (- ku 3) (math/sqrt sr))))))
+;;         (let [sr (/ (- (/ (Math/round ^double (* 10000 annret)) 10000) frisk)
+;;                     (/ (Math/round ^double (* 10000 annrisk)) 10000))]
+;;           (* sr (- (+ 1 (* (/ sk 6) sr))
+;;                    (* (- ku 3) (math/sqrt sr))))))
 ;;        ([acc [sk ku annret annrisk]]
 ;;         (-> acc (conj! sk) (conj! ku) (conj! annret) (conj! annrisk)))))))
 ;;   ([^double frisk ^long freq]
@@ -155,205 +116,134 @@
 (defn downside-risk
   "Downside Risk or Semi-Standard Deviation.
    Measures the variability of underperformance below a minimum target rate"
-  ([^double mar]
-   (x/reduce
-    (fn
-      ([] [])
-      ([acc] (downside-risk mar acc))
-      ([acc x] (conj acc x)))))
-  (^double [^double mar ret]
-   (let [arr (h/seq->double-array ret)
-         n   (alength ^doubles arr)]
-     (loop [i 0 sum 0.0]
-       (if (p/< i n)
-         (recur (p/inc i) (p/+ sum
-                               (p/div (math/sq (math/min 0.0 (p/- (aget ^doubles arr i) mar)))
-                                      (p/double n))))
-         (math/sqrt sum))))))
+  ^double [^double mar ret]
+  (let [arr (h/seq->double-array ret)
+        n   (alength ^doubles arr)]
+    (loop [i 0 sum 0.0]
+      (if (< i n)
+        (recur (inc i)
+               (+ sum
+                  (/ (math/sq (math/min 0.0 (- (aget ^doubles arr i) mar))) n)))
+        (math/sqrt sum)))))
 
 (comment
-  (do (quick-bench (into [] (downside-risk 0.0) data))
-      (quick-bench (downside-risk 0.0 data))))
+  (quick-bench (downside-risk 0.0 data)))
 
 (defn sortino-ratio
   "Sortino ratio"
-  ([^double frisk ^double mar]
-   (x/reduce
-    (fn
-      ([] [])
-      ([acc] (sortino-ratio frisk mar acc))
-      ([acc x] (conj acc x)))))
-  (^double [^double frisk ^double mar ret]
-   (let [arr (h/seq->double-array ret)
-         dr (downside-risk mar arr)
-         mean (stats/mean arr)]
-     (p/div (p/- mean frisk) dr))))
+  ^double [^double frisk ^double mar ret]
+  (let [arr (h/seq->double-array ret)
+        dr (downside-risk mar arr)
+        mean (stats/mean arr)]
+    (/ (- mean frisk) dr)))
 
 (comment
-  (do (quick-bench (into [] (sortino-ratio 0.0 0.0) data))
-      (quick-bench (sortino-ratio 0.0 0.0 data))))
+  (quick-bench (sortino-ratio 0.0 0.0 data)))
 
 (defn drawdown
   "Drawdowon from Peak. Any continuous losing return period."
-  ([]
-   (x/reduce
-    (fn
-      ([] [])
-      ([acc] (drawdown acc))
-      ([acc x] (conj acc x)))))
-  (^doubles [close-or-ret]
-   (let [arr (h/seq->double-array close-or-ret)
-         n   (alength ^doubles arr)
-         r   (double-array n)]
-     (loop [i 0 s 1.0 mx 1.0]
-       (if (p/< i n)
-         (let [v (p/* s (+ 1.0 (aget ^doubles arr i)))
-               mx' (math/max v mx)
-               dr (p/div (p/- mx' v) mx')]
-           (aset r i dr)
-           (recur (inc i) v mx'))
-         r)))))
+  ^doubles [ret]
+  (let [arr (h/seq->double-array ret)
+        n   (alength ^doubles arr)
+        r   (double-array n)]
+    (loop [i 0 s 1.0 mx 1.0]
+      (if (< i n)
+        (let [v (* s (+ 1.0 (aget ^doubles arr i)))
+              mx' (math/max v mx)
+              dr (/ (- mx' v) mx')]
+          (aset r i dr)
+          (recur (inc i) v mx'))
+        r))))
 
 (comment
-  (do (quick-bench (into [] (drawdown) data))
-      (quick-bench (drawdown data))))
+  (quick-bench (drawdown (tick->ret data))))
 
 (defn continuous-drawdown
-  ([]
-   (x/reduce
-    (fn
-      ([] [])
-      ([acc] (continuous-drawdown acc))
-      ([acc x] (conj acc x)))))
-  (^doubles [close-or-ret]
-   (let [arr (h/seq->double-array close-or-ret)
-         n   (alength ^doubles arr)
-         dq   (java.util.ArrayDeque.)]
-     (loop [i 0 s 1.0]
-       (when (p/< i n)
-         (let [v (aget ^doubles arr i)]
-           (cond
-             (and (p/zero? i) (p/< v 0.0))
-             (recur (p/inc i) (p/+ 1.0 v))
-             (and (p/zero? i) (p/> v 0.0))
-             (recur (p/inc i) 1.0)
-             (p/< 0 i)
-             (if (p/< v 0.0)
-               (recur (p/inc i) (p/* s (+ 1.0 v)))
-               (let [dd (p/- 1.0 s)]
-                 (when-not (p/zero? dd)
-                   (.add dq dd))
-                 (recur (p/inc i) 1.0)))))))
-     (let [r (double-array (.toArray dq))]
-       (.clear dq)
-       r))))
+  ^doubles [ret]
+  (let [arr (h/seq->double-array ret)
+        n   (alength ^doubles arr)
+        dq   (java.util.ArrayDeque.)]
+    (loop [i 0 s 1.0]
+      (when (< i n)
+        (let [v (aget ^doubles arr i)]
+          (cond
+            (and (zero? i) (< v 0.0))
+            (recur (inc i) (+ 1.0 v))
+            (and (zero? i) (> v 0.0))
+            (recur (inc i) 1.0)
+            (< 0 i)
+            (if (< v 0.0)
+              (recur (inc i) (* s (+ 1.0 v)))
+              (let [dd (- 1.0 s)]
+                (when-not (zero? dd)
+                  (.add dq dd))
+                (recur (inc i) 1.0)))))))
+    (let [r (double-array (.toArray dq))]
+      (.clear dq)
+      r)))
 
 (comment
-  (do (quick-bench (into [] (continuous-drawdown) data))
-      (quick-bench (continuous-drawdown data))))
+  (quick-bench (continuous-drawdown data)))
 
 (defn average-drawdown
-  ([]
-   (x/reduce
-    (fn
-      ([] [])
-      ([acc] (average-drawdown acc))
-      ([acc x] (conj acc x)))))
-  (^double [close-or-ret]
-   (let [arr (h/seq->double-array close-or-ret)]
-     (->> (continuous-drawdown ^doubles arr)
-          (stats/mean)))))
+  ^double [ret]
+  (let [arr (h/seq->double-array ret)]
+    (->> (continuous-drawdown arr)
+         (stats/mean))))
 
 (comment
-  (do (quick-bench (into [] (average-drawdown) data))
-      (quick-bench (average-drawdown data))))
+  (quick-bench (average-drawdown data)))
 
 (defn maximum-drawdown
-  ([]
-   (x/reduce
-    (fn
-      ([] [])
-      ([acc] (maximum-drawdown acc))
-      ([acc x] (conj acc x)))))
-  (^double [close-or-ret]
-   (let [arr (h/seq->double-array close-or-ret)]
-     (->> (continuous-drawdown ^doubles arr)
-          (stats/max)))))
+  ^double [ret]
+  (let [arr (h/seq->double-array ret)]
+    (->> (continuous-drawdown arr)
+         (stats/max))))
 
 (comment
-  (do (quick-bench (into [] (continuous-drawdown) data))
-      (quick-bench (continuous-drawdown data))))
+  (quick-bench (continuous-drawdown data)))
 
 (defn rate-of-return
   "Simple rate of return calculated from the last and the first value of
   an array of numbers."
-  ([]
-   (x/reduce
-    (fn
-      ([] [])
-      ([acc] (rate-of-return acc))
-      ([acc x] (conj acc x)))))
-  (^double [ret]
-   (let [arr (->> (h/seq->double-array ret)
-                  (emath/add 1.0)
-                  (emath/cumprod))
-         l   (h/last arr)
-         f   (h/first arr)]
-     (p/- (p/div (p/double l) (p/double f)) 1.0))))
+  ^double [ret]
+  (let [arr       (->> (h/seq->double-array ret)
+                       (emath/add 1.0)
+                       (emath/cumprod))
+        l (h/last arr)
+        f (h/first arr)]
+    (- (/ ^double l ^double f) 1.0)))
 
 (defn rate-of-change
   "Simple rate of chane calculated from the last and the first value of
   an array of numbers."
-  ([^long n]
-   (x/reduce
-    (fn
-      ([] [])
-      ([acc] (rate-of-change n acc))
-      ([acc x] (conj acc x)))))
-  (^double [^long n ret]
-   (let [arr (h/seq->double-array ret)
-         c   (alength ^doubles arr)]
-     (if (< n c)
-       (let [l (h/last arr)
-             i (aget ^doubles arr (p/dec (p/- c n)))]
-         (p/- (p/div (p/double l) (p/double i)) 1.0))
-       0.0))))
+  ^double [^long n ret]
+  (let [arr (h/seq->double-array ret)
+        c   (alength ^doubles arr)]
+    (if (< n c)
+      (let [l (h/last arr)
+            i (aget ^doubles arr (dec (- c n)))]
+        (- (/ ^double l i) 1.0))
+      0.0)))
 
 (defn cagr
   "Compound annual growth rate"
-  (^double [^double n ret]
-   (let [arr (h/seq->double-array ret)]
-     (p/- (math/pow
-           (p/+ 1.0
-                (rate-of-return arr))
-           (p/div 1.0 n))
-          1.0)))
-  (^double [close]
-   (cagr 1.0 close)))
-
-;; (defn calmar-ratio ;;TODO
-;;   "A risk-adjusted measure like Sharpe ratio that uses maximum drawdown instead of
-;;   standard deviation for risk."
-;;   ([^double frisk ^long freq]
-;;    (comp (x/transjuxt [(annualized-return freq :geometric) maximum-drawdown])
-;;          (x/reduce
-;;           (fn
-;;             ([] (transient []))
-;;             ([[annret maxdd]] (/ (- annret frisk) maxdd))
-;;             ([acc [annret maxdd]] (-> acc (conj! annret) (conj! maxdd)))))))
-;;   ([frisk]
-;;    (calmar-ratio frisk 252))
-;;   ([]
-;;    (calmar-ratio 0.0 252)))
+  ^double [^double n ret]
+  (let [arr (h/seq->double-array ret)]
+    (- (math/pow
+        (+ 1.0
+           (rate-of-return arr))
+        (/ 1.0 n))
+       1.0)))
 
 (defn calmar-ratio
   "A risk-adjusted measure like Sharpe ratio that uses maximum drawdown instead of
   standard deviation for risk."
-  ([^double frisk ^long freq ret]
-   (let [arr    (h/seq->double-array ret)
-         maxdd  (maximum-drawdown ret)
-         annret (ann-return-geometric freq arr)]
-     (/ (- annret frisk) maxdd))))
+  [^double frisk ^long freq ret]
+  (let [arr    (h/seq->double-array ret)
+        maxdd  (maximum-drawdown ret)
+        annret (ann-return-geometric freq arr)]
+    (/ (- annret frisk) maxdd)))
 
 ;; (defn downside-potential ;;TODO
 ;;   "Downside potential"
@@ -384,7 +274,7 @@
 ;;        ([] (transient []))
 ;;        ([[annret dd c]] (case mode
 ;;                           :simple (/ (- annret frisk) dd)
-;;                           :modified (p/* (/ (- annret frisk) dd)
+;;                           :modified (* (/ (- annret frisk) dd)
 ;;                                        (math/sqrt c))))
 ;;        ([acc [annret dd c]] (-> acc
 ;;                                 (conj! annret)
@@ -487,36 +377,33 @@
 ;;       (fn
 ;;         ([] [0.0 0.0 0.0])
 ;;         ([[mean sharpe std]]
-;;          (+ mean (p/* sharpe (- stdb std))))
+;;          (+ mean (* sharpe (- stdb std))))
 ;;         ([acc coll] coll))))))
 
 (defn rolling-economic-drawndown
-  ^double [^long freq close]
-  (let [arr (-> (h/seq->double-array close) (h/take-last freq))
-        max (stats/max ^doubles arr)]
-    (p/- 1.0 (p/div ^double (h/last arr) max))))
+  ^double [^long freq ret]
+  (let [arr (-> (h/seq->double-array ret) (h/take-last freq))
+        mx (stats/max ^doubles arr)]
+    (- 1.0 (/ ^double (h/last arr) mx))))
 
 (comment
-  (do (quick-bench (into [] (rolling-economic-drawndown 254) data))
-      (quick-bench (rolling-economic-drawndown 254 data))))
+  (quick-bench (rolling-economic-drawndown 254 data)))
 
 (defn tick->ret
   "Convert a value series to a return series"
   ^doubles [close]
   (let [arr (h/seq->double-array close)
         n   (alength ^doubles arr)
-        nn  (p/dec n)
-        r   (double-array (p/dec n))]
+        nn  (dec n)
+        r   (double-array (dec n))]
     (loop [i 0]
-      (when (p/< i nn)
+      (when (< i nn)
         (let [x (aget ^doubles arr i)
-              y (aget ^doubles arr (p/inc i))
-              ret (p/- (p/div y x) 1.0)]
+              y (aget ^doubles arr (inc i))
+              ret (- (/ y x) 1.0)]
           (aset ^doubles r i ret)
-          (recur (p/inc i)))))
+          (recur (inc i)))))
     r))
 
 (comment
-  (do (quick-bench (into [] (tick->ret) data))
-      (quick-bench (tick->ret data))))
-
+  (quick-bench (tick->ret data)))
