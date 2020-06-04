@@ -52,14 +52,5 @@
           Y]            (apply map vector (fk/fmap (partial redp-stats frisk risk freq) assets))
          inv-volatility (fk/fmap #(math/pow % -1.0) volatility)
          matrix         (fk/fmap (comp math/round *) inv-volatility drift inv-volatility Y)
-         sum            (fk/fold + matrix)
-         proportions    (if (<= ^double sum 1.0) matrix (fk/fmap #(/ ^double % ^double sum) matrix))]
-     (fk/fmap
-      (fn [symbol p]
-        {:symbol     symbol
-         :allocation p})
-      symbols proportions)))
-  ([frisk risk freq assets]
-   (let [symbols (into [] (map #(:symbol (first %))) assets)
-         data    (into [] (map #(into [] (map :close) %)) assets)]
-     (multiple-allocation frisk risk freq symbols data))))
+         sum            (fk/fold + matrix)]
+     (if (<= ^double sum 1.0) matrix (fk/fmap #(/ ^double % ^double sum) matrix)))))
