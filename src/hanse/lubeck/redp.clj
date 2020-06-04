@@ -46,7 +46,7 @@
   (redp-stats 0.0 0.3 5 data))
 
 (defn multiple-allocation
-  ([frisk risk freq symbols assets]
+  ([frisk risk freq assets]
    (let [[volatility
           drift
           Y]            (apply map vector (fk/fmap (partial redp-stats frisk risk freq) assets))
