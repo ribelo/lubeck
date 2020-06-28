@@ -1,4 +1,4 @@
-(ns hanse.lubeck
+(ns hanse.lubeck.quant
   (:require
    [clojure.spec.alpha :as s]
    [uncomplicate.fluokitten.jvm]
