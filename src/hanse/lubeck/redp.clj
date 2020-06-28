@@ -2,7 +2,7 @@
   (:require
    [uncomplicate.fluokitten.core :as fk]
    [hanse.halle :as h]
-   [hanse.lubeck :as lubeck]
+   [hanse.lubeck.quant :as quant]
    [hanse.rostock.math :as math]
    [hanse.rostock.stats :as stats]))
 
@@ -17,10 +17,10 @@
 (defn single-allocation
   ^double [^double frisk ^double risk ^long freq close]
   (let [close' (h/seq->double-array close)
-        ret    (lubeck/tick->ret close')
-        redp   (lubeck/rolling-economic-drawndown freq close')
-        std    (lubeck/annualized-risk freq ret)
-        sr     (lubeck/annualized-sharpe-ratio frisk freq ret)]
+        ret    (quant/tick->ret close')
+        redp   (quant/rolling-economic-drawndown freq close')
+        std    (quant/annualized-risk freq ret)
+        sr     (quant/annualized-sharpe-ratio frisk freq ret)]
     (math/min 1.0
               (math/max 0.0 (* (/ (+ (/ sr std) 0.5)
                                   (- 1.0 (math/pow risk 2.0)))
@@ -32,11 +32,11 @@
 
 (defn- redp-stats [^double frisk ^double risk ^long freq ^doubles close]
   (let [close'  (h/seq->double-array close)
-        ret     (lubeck/tick->ret close')
-        std     (lubeck/annualized-risk freq ret)
-        ann-ret (lubeck/ann-return-geometric freq ret)
+        ret     (quant/tick->ret close')
+        std     (quant/annualized-risk freq ret)
+        ann-ret (quant/ann-return-geometric freq ret)
         drift   (math/max 0.0 (+ (- ann-ret frisk) (/ (math/sq std) 2.0)))
-        redp    (lubeck/rolling-economic-drawndown freq close')
+        redp    (quant/rolling-economic-drawndown freq close')
         Y       (* (/ 1.0 (- 1.0 (math/sq risk)))
                    (/ (- risk redp)
                       (- 1.0 redp)))]
